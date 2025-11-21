@@ -182,7 +182,7 @@ namespace silica {
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
         if constexpr (s_EnableValidationLayers)
         {
-            SIL_ASSERT(utils::checkValidationLayerSupport(), "Validation layers enables but are not supported!");
+            SIL_ASSERT(utils::checkValidationLayerSupport(), "Validation layers enabled but are not supported!");
 
             instanceInfo.enabledLayerCount = (uint32_t)s_ValidationLayers.size();
             instanceInfo.ppEnabledLayerNames = s_ValidationLayers.data();
