@@ -1,0 +1,6 @@
+[submodule "vendor/nvrhi"]
+	path = vendor/nvrhi
+	url = https://github.com/NVIDIA-RTX/NVRHI
+[submodule "vendor/glfw"]
+	path = vendor/glfw
+	url = https://github.com/glfw/glfw
