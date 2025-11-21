@@ -12,8 +12,10 @@ namespace silica {
     enum class RendererAPI
     {
         Vulkan = 0,
+#ifdef SIL_PLATFORM_WINDOWS
         D3D12,
         D3D11
+#endif
     };
 
     struct InstanceInfo
