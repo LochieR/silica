@@ -16,7 +16,13 @@ find_package(Vulkan REQUIRED)
 add_executable(silica)
 target_sources(silica PRIVATE ${HEADERS} ${CPPSOURCES})
 
-target_link_libraries(silica PRIVATE Vulkan::Vulkan nvrhi nvrhi_vk nvrhi_d3d11 nvrhi_d3d12 glfw)
+target_link_libraries(silica PRIVATE
+    Vulkan::Vulkan
+    nvrhi
+    nvrhi_vk
+    $<$<PLATFORM_ID:Windows>:nvrhi_d3d11>
+    $<$<PLATFORM_ID:Windows>:nvrhi_d3d12>
+    glfw)
 target_include_directories(silica PRIVATE
     silica/src
     vendor/nvrhi/include
