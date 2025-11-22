@@ -317,6 +317,9 @@ namespace silica {
         createLogicalDevice();
         createDispatchLoaderDynamic();
         createNVRHIDevice();
+        createCommandPool();
+        createSyncObjects();
+        createSwapchain();
     }
 
     VulkanDevice::~VulkanDevice()
@@ -324,11 +327,76 @@ namespace silica {
         destroy();
     }
 
+    void VulkanDevice::beginFrame()
+    {
+        vkWaitForFences(m_Device, 1, &m_InFlightFences[m_FrameIndex], VK_TRUE, std::numeric_limits<uint64_t>::max());
+
+        VkResult result = vkAcquireNextImageKHR(m_Device, m_Swapchain, std::numeric_limits<uint64_t>::max(), m_PresentSemaphores[m_FrameIndex], nullptr, &m_SwapchainIndex);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        {
+            return;
+        }
+        VK_CHECK(result, "failed to acquire Vulkan swapchain image");
+
+        vkResetFences(m_Device, 1, &m_InFlightFences[m_FrameIndex]);
+
+        m_NvrhiDevice->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphores[m_FrameIndex], 0);
+    }
+
+    void VulkanDevice::endFrame()
+    {
+        // present
+        m_NvrhiDevice->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, m_PresentSemaphores[m_FrameIndex], 0);
+
+        m_EndOfFrameCommandList->open();
+        m_EndOfFrameCommandList->close();
+        getNvrhiDevice<nvrhi::DeviceHandle>()->executeCommandList(m_EndOfFrameCommandList);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+		VkResult result = vkBeginCommandBuffer(m_EndOfFrameCommandBuffers[m_FrameIndex], &beginInfo);
+		VK_CHECK(result, "failed to begin Vulkan command buffer!");
+
+        result = vkEndCommandBuffer(m_EndOfFrameCommandBuffers[m_FrameIndex]);
+		VK_CHECK(result, "failed to end Vulkan command buffer!");
+
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+		VkSubmitInfo submit{};
+		submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submit.waitSemaphoreCount = 1;
+		submit.pWaitSemaphores = &m_PresentSemaphores[m_FrameIndex];
+		submit.pWaitDstStageMask = waitStages;
+		submit.commandBufferCount = 1;
+		submit.pCommandBuffers = &m_EndOfFrameCommandBuffers[m_FrameIndex];
+		submit.signalSemaphoreCount = 1;
+		submit.pSignalSemaphores = &m_EndOfFrameSemaphores[m_FrameIndex];
+
+        result = vkQueueSubmit(m_GraphicsQueue, 1, &submit, m_InFlightFences[m_FrameIndex]);
+		VK_CHECK(result, "failed to submit to Vulkan queue!");
+
+        VkPresentInfoKHR present{};
+		present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		present.waitSemaphoreCount = 1;
+		present.pWaitSemaphores = &m_EndOfFrameSemaphores[m_FrameIndex];
+		present.swapchainCount = 1;
+		present.pSwapchains = &m_Swapchain;
+		present.pImageIndices = &m_SwapchainIndex;
+
+		result = vkQueuePresentKHR(m_PresentQueue, &present);
+		VK_CHECK(result, "failed to present Vulkan queue!");
+
+        m_FrameIndex = (m_FrameIndex + 1) % SIL_FRAMES_IN_FLIGHT;
+    }
+
     void VulkanDevice::destroy()
     {
         if (m_Valid && m_Instance)
         {
             getNvrhiDevice<nvrhi::DeviceHandle>()->runGarbageCollection();
+            m_NvrhiDevice = nullptr;
             resetNvrhiDevice();
 
             vkDeviceWaitIdle(m_Device);
@@ -457,7 +525,8 @@ namespace silica {
         deviceDesc.numDeviceExtensions = s_DeviceExtensions.size();
         deviceDesc.deviceExtensions = const_cast<const char**>(s_DeviceExtensions.data());
 
-        nvrhi::DeviceHandle device = nvrhi::vulkan::createDevice(deviceDesc);
+        m_NvrhiDevice = nvrhi::vulkan::createDevice(deviceDesc);
+        nvrhi::DeviceHandle device = m_NvrhiDevice;
         setNvrhiDevice(&device);
     }
 

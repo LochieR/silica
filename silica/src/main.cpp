@@ -5,6 +5,8 @@
 
 int main()
 {
+    SIL_SETUP_LOG({ &std::cout }, {}, "%c[%H:%M:%S] %m%c");
+
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -21,6 +23,10 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
+        device->beginFrame();
+
+        device->endFrame();
+
         glfwPollEvents();
     }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/Log.h"
+
 #include "Resource.h"
 
 namespace silica {
@@ -15,6 +17,9 @@ namespace silica {
     public:
         Device();
         ~Device();
+
+        virtual void beginFrame() = 0;
+        virtual void endFrame() = 0;
     protected:
         void setNvrhiDevice(void* nativeDevice);
         void resetNvrhiDevice();

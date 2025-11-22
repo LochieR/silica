@@ -4,6 +4,7 @@
 #include "Renderer/Device.h"
 
 #include <nvrhi/nvrhi.h>
+#include <nvrhi/vulkan.h>
 #include <vulkan/vulkan.h>
 
 #include <array>
@@ -31,14 +32,17 @@ namespace silica {
     public:
         VulkanDevice(VulkanInstance* instance, const DeviceInfo& deviceInfo);
         virtual ~VulkanDevice();
+
+        virtual void beginFrame() override;
+        virtual void endFrame() override;
     protected:
         virtual void destroy() override;
         virtual void invalidate() noexcept override;
     private:
         void pickPhysicalDevice();
         void createLogicalDevice();
-        void createNVRHIDevice();
         void createDispatchLoaderDynamic();
+        void createNVRHIDevice();
         void createCommandPool();
         void createSyncObjects();
         void createSwapchain();
@@ -77,6 +81,7 @@ namespace silica {
         uint32_t m_SwapchainIndex = 0;
         uint32_t m_SwapchainImageCount;
 
+        nvrhi::vulkan::DeviceHandle m_NvrhiDevice;
         nvrhi::CommandListHandle m_EndOfFrameCommandList;
 
         class MessageCallback : public nvrhi::IMessageCallback
